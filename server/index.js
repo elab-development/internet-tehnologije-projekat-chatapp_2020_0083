@@ -1,12 +1,18 @@
 const express=require("express");
-const cors=require("cors")
-const mongoose=require("mongoose")
-
-const app=express()
+const cors=require("cors");
+const mongoose=require("mongoose");
+const userRoute=require("./Routes/userRoute");
+const app=express();
 require("dotenv").config()
 
-app.use(express.json())
-app.use(cors())
+app.use(express.json());
+app.use(cors());
+app.use("/api/users", userRoute);
+
+app.get("/",(req,res)=>{
+    res.send("welcome to our chat app APIs")
+})
+
 
 const port=process.env.PORT || 9000;
 const uri=process.env.ATLAS_URI;
