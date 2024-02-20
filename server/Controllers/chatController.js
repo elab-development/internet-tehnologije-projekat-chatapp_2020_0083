@@ -32,7 +32,7 @@ const findUserChats=async(req,res)=>{
     const userId=req.params.userId;
 
     try{
-        const chats=await chatModel.findOne({
+        const chats=await chatModel.find({
             members:{$in:[userId]}
         })
 
