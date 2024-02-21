@@ -3,8 +3,10 @@ import { useFetchRecipientUser } from "../../hooks/useFetchRecipient";
 
 const UserChat =({chat, user})=>{
     const {recipientUser}=useFetchRecipientUser(chat, user)
-    console.log(recipientUser)
-    return <Stack direction="horizontal" gap={3} className="user-card align-items-centar p-2 justify-content-between">
+    console.log("chat",chat)
+    console.log("rec", recipientUser)
+   
+    return <Stack direction="horizontal" gap={3} className="user-card align-items-centar p-2 justify-content-between" role="button">
         <div className="d-flex">
             <div className="me-2">
                 A
