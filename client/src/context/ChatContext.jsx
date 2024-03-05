@@ -1,5 +1,6 @@
 import { createContext, useState, useEffect, useCallback } from "react";
 import { baseUrl, getRequest, postRequest} from "../utils/services";
+import {io} from "socket.io-client";
 
 export const ChatContext = createContext();
 
@@ -14,10 +15,35 @@ export const ChatContextProvider = ({children, user})=>{
     const [messagesError, setMessagesError]=useState(null);
     const [sendTextMessageError, setSendTextMessageError]= useState(null);
     const [newMessage, setNewMessage]=useState(null);
+    const [socket, setSocket]=useState(null);
+    const [onlineUsers, setOnlineUsers]=useState([])
     
 
-    console.log("messages",messages);
+    console.log("onlineUseres",onlineUsers);
 
+    useEffect(()=>{
+
+        const newSocket=io("http://localhost:3000");
+        setSocket(newSocket);
+
+        return ()=>{
+            newSocket.disconnect()
+        }
+    },[user])
+
+    useEffect(()=>{
+        if(socket === null) return;
+        socket.emit("addNewUser",user?._id)
+        socket.on("getOnlineUsers", (res)=>{
+            setOnlineUsers(res);
+
+        });
+
+        return ()=>{
+            socket.off("getOnlineUsers");
+        };
+
+    }, [socket])
 
     useEffect(()=>{
         const getUsers=async()=>{
@@ -119,7 +145,7 @@ const sendTextMessage=useCallback(async(textMessage, sender, currentChatId, setT
 
 
     return <ChatContext.Provider value={{
-        userChats, isUserChatsLoading, userChatError, potentialChats, createChat, updateCurrentChat,currentChat, messages, isMessagesLoading, messagesError, sendTextMessage
+        userChats, isUserChatsLoading, userChatError, potentialChats, createChat, updateCurrentChat,currentChat, messages, isMessagesLoading, messagesError, sendTextMessage, onlineUsers,
     }}>
         {
             children
