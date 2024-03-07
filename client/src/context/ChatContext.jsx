@@ -1,6 +1,7 @@
 import { createContext, useState, useEffect, useCallback } from "react";
 import { baseUrl, getRequest, postRequest} from "../utils/services";
 import {io} from "socket.io-client";
+import { unreadNotificationFunc } from "../utils/unreadNotification";
 
 export const ChatContext = createContext();
 
@@ -16,10 +17,13 @@ export const ChatContextProvider = ({children, user})=>{
     const [sendTextMessageError, setSendTextMessageError]= useState(null);
     const [newMessage, setNewMessage]=useState(null);
     const [socket, setSocket]=useState(null);
-    const [onlineUsers, setOnlineUsers]=useState([])
+    const [onlineUsers, setOnlineUsers]=useState([]);
+    const [notifications, setNotifications]=useState([]);
+    const [allUsers, setAllUsers]=useState([]);
     
 
-    console.log("onlineUseres",onlineUsers);
+    console.log("not",notifications);
+    console.log("un",unreadNotificationFunc);
 
     useEffect(()=>{
 
@@ -54,7 +58,7 @@ export const ChatContextProvider = ({children, user})=>{
 
     }, [newMessage])
 
-    //recieve mess
+    //recieve mess and notifications
 
     useEffect(()=>{
         if(socket === null) return;
@@ -64,10 +68,19 @@ export const ChatContextProvider = ({children, user})=>{
             setMessages((prev)=>[...prev, res])
 
 
+        });
+        socket.on("getNotification",(res)=>{
+            const isChatOpen = currentChat?.members.some(id=>id===res.secondId)
+            if(isChatOpen){
+                setNotifications(prev=>[{...res, isRead:true},...prev])
+            }else{
+                setNotifications(prev =>[res, ...prev])
+            }
         })
 
         return ()=>{
             socket.off("getMessage")
+            socket.off("getNotification")
         }
 
 
@@ -98,6 +111,7 @@ export const ChatContextProvider = ({children, user})=>{
             })
 
             setPotentialChats(pChats)
+            setAllUsers(response)
         }
 
         getUsers()
@@ -120,7 +134,7 @@ export const ChatContextProvider = ({children, user})=>{
             }
         }
         getUserChats()
-    },[user])
+    },[user, notifications])
 
 
     useEffect(()=>{
@@ -177,8 +191,58 @@ const sendTextMessage=useCallback(async(textMessage, sender, currentChatId, setT
     },[])
 
 
+
+    const markAllNotificationsAsRead = useCallback((notifications)=>{
+        const mNotifications=notifications.map(n=>{return{...n, isRead:true}})
+        setNotifications(mNotifications)
+    },[])
+
+
+
+    const markNotificationsAsRead = useCallback((n, userChats, user, notifications)=>{
+        //find chat to open
+
+        const desiredChat = userChats.find(chat =>{
+            const chatMembers = [user._id, n.senderId]
+            const isDesisredChat = chat?.members.every((member)=>{
+                return chatMembers.includes(member);
+            })
+            return isDesisredChat
+        })
+        //mark notification as read
+        const mNotifications=notifications.map(el=>{
+            if(n.senderId===el.senderId){
+                return {...n,isRead:true}
+            }else{
+                return el
+            }
+        })
+        updateCurrentChat(desiredChat)
+        setNotifications(mNotifications)
+    },[])
+
+    const markThisUserNotificationsAsRead=useCallback((thisUserNotifications, notifications)=>{
+        const mNotifications = notifications.map(el=>{
+            let notification;
+            thisUserNotifications.forEach(n=>{
+                if(n.senderId===el.senderId){
+                    notification ={
+                        ...n, isRead:true
+                    }
+                }else{
+                    notification=el
+                }
+            })
+            return notification
+        })
+        setNotifications(mNotifications)
+    },[])
+
+
     return <ChatContext.Provider value={{
-        userChats, isUserChatsLoading, userChatError, potentialChats, createChat, updateCurrentChat,currentChat, messages, isMessagesLoading, messagesError, sendTextMessage, onlineUsers,
+        userChats, isUserChatsLoading, userChatError, potentialChats, createChat, updateCurrentChat,currentChat,
+         messages, isMessagesLoading, messagesError, sendTextMessage, onlineUsers, notifications,allUsers,markAllNotificationsAsRead,
+         markNotificationsAsRead,markThisUserNotificationsAsRead
     }}>
         {
             children
